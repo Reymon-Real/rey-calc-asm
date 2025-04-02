@@ -122,7 +122,7 @@ section '.text' executable align 8
 	;; **************************
 
 		lea		rdi, [buffer.two]
-		mov		rsi, $01
+		mov		rsi, $40
 		call	read
 
 	;; ****************************
@@ -132,16 +132,18 @@ section '.text' executable align 8
 		lea		rdi, [buffer.two]
 		call	plt atoi
 
-		mov		word [buffer.two], ax	;; Guardamos el número en memoria
+		cdq
+
+		mov		qword [buffer.two], rax	;; Guardamos el número en memoria
 
 	;; *************************************************
 	;; *** Verificamos si existe la opción ingresada ***
 	;; *************************************************
 
-		cmp		ax, $08
+		cmp		al, $09
 		ja		.dont_option
 
-		cmp		ax, $00
+		cmp		al, $01
 		jl		.dont_option
 
 		jmp		.main_loop.option
@@ -157,7 +159,7 @@ section '.text' executable align 8
 	;; *** Verificar si el programa terminó ***
 	;; ****************************************
 
-		cmp		ax, $08
+		cmp		al, $09
 		je		.done
 
 	;; ********************************
@@ -174,9 +176,8 @@ section '.text' executable align 8
 
 		lea		rdi, qword [buffer.sixty_four]
 		call	plt atoi
-		
-		cwde
-		cdqe
+
+		cdq
 		
 		mov		qword [rbp - $10], rax
 
@@ -195,20 +196,23 @@ section '.text' executable align 8
 		lea		rdi, [buffer.sixty_four]
 		call	plt atoi
 
-		cdqe
+		cdq
 
 		mov		rdi, qword [rbp - $10]
 		mov		rsi, rax
-		mov		ax, word [buffer.two]
-		call	calc
-
-		jmp		.main_loop
+		mov		rax, qword [buffer.two]
+		jmp		calc
 
 	;; *********************************
 	;; *** Finalización del programa ***
 	;; *********************************
 
+	align	8
 	.done:
+
+		lea		rdi, qword [msg.done]
+		mov		rsi, msg.done.length
+		call	write
 
 		mov		rax, $3C
 		xor		rdi, rdi
@@ -218,11 +222,12 @@ section '.text' executable align 8
 	;; *** Manejo de errores ***
 	;; *************************
 
+	align 8
 	.dont_option:
 		lea		rdi, [msg.error.option]
 		mov		rsi, msg.error.option.length
 		call	write
-		jmp		.done
+		jmp		.main_loop
 
 ;; ************************************************
 ;; *** Subrutinas que hacen llamadas el sistema ***
@@ -232,6 +237,7 @@ section '.text' executable align 8
 	;; *** Subrutina para imprimir carácteres por consola ***
 	;; ******************************************************
 
+	align 8
 	write:
 		mov		rax, $001	;; Indicamos el servicio del sistema (write)
 		mov		rdx, rsi	;; Pasamos la longitud
@@ -244,6 +250,7 @@ section '.text' executable align 8
 	;; *** Subrutina para obtener un string por consola ***
 	;; ****************************************************
 
+	align 8
 	read:
 		mov		rdx, rsi	;; Longitud del buffer
 		mov		rsi, rdi	;; Dirección de memoria del buffer
@@ -256,55 +263,110 @@ section '.text' executable align 8
 	;; *** Subrutina para pausar un tiempo el sistema ***
 	;; **************************************************
 
+	align 8
 	time:
-		mov		rax, $23
-		xor		rsi, rsi
-		syscall
-		ret
+		mov		rax, $23	;; Número del servicio
+		xor		rsi, rsi	;; El remaining no es necesario
+		syscall				;; Llamada al sistema
+		ret					;; Retorno de la llamada
 
 ;; ********************************
 ;; *** Subrutina de calculadora ***
 ;; ********************************
-
+	
+	align 8
 	calc:
 		
-		test	ax, ax
-		jz		.sum
+	;; ***************************************************
+	;; *** Verificámos que cálculo fue el seleccionado ***
+	;; ***************************************************
 
-		cmp		ax, $01
+		cmp		al, $01
+		je		.sum
+
+		cmp		al, $02
 		je		.minus
 
-		cmp		ax, $02
+		cmp		al, $03
 		je		.signed.mult
 
-		cmp		ax, $03
+		cmp		al, $04
 		je		.signed.divs
 
-		cmp		ax, $04
+		cmp		al, $05
 		je		.signed.module
 
-		cmp		ax, $05
+		cmp		al, $06
 		je		.unsigned.mult
 
-		cmp		ax, $06
+		cmp		al, $07
 		je		.unsigned.mult
 
-		cmp		ax, $07
+		cmp		al, $08
 		je		.unsigned.mult
 
-	.done:
-		ret
+	;; ****************************************
+	;; *** En el caso que el programa falle	***
+	;; *** por alguna extraña razón externa	***
+	;; *** 		manejamos el error			***
+	;; ****************************************
+
+		lea		rdi, qword [msg.error.calc]
+		mov		rsi, msg.error.calc.length
+		call	write
+
+		lea		rdi, qword [ts.two.sec]
+		call	time
+
+		jmp		main
+
+;; ************************************
+;; *** Operaciones de finalización	***
+;; ***			del cálculo			***
+;; ************************************
+
+	.done.signed:
+		lea		rdi, qword [msg.printf.format.signed]
+		mov		rsi, rax
+		xor		eax, eax
+		call	plt printf
+
+		lea		rdi, qword [ts.two.sec]
+		call	time
+
+		jmp		main.main_loop
+
+	.done.unsigned:
+		lea		rdi, qword [msg.printf.format.unsigned]
+		mov		rsi, rax
+		xor		eax, eax
+		call	plt printf
+
+		lea		rdi, qword [ts.two.sec]
+		call	time
+
+		jmp		main.main_loop
+
+
+;; ******************************
+;; *** Operaciones soportadas ***
+;; ******************************
+
+	;; *****************************
+	;; *** Operaciones con signo ***
+	;; *****************************
 
 	.sum:
 		mov		rax, rdi
 		add		rax, rsi
 
-		jmp		.done
+		jmp		.done.signed
 
 	.minus:
 		mov		rax, rdi
 		sub		rax, rsi
-		jmp		.done
+		
+		jmp		.done.signed
 
 	.signed.mult:
 		xor		rdx, rdx
@@ -313,7 +375,7 @@ section '.text' executable align 8
 		mov		rax, rdi
 		xor		rdx, rdx
 		
-		jmp		.done
+		jmp		.done.signed
 
 	.signed.divs:
 		xor		rdx, rdx
@@ -322,15 +384,20 @@ section '.text' executable align 8
 		idiv	rsi
 		xor		rdx, rdx
 		
-		jmp		.done
+		jmp		.done.signed
 
 	.signed.module:
 		xor		rdx, rdx
 		mov		rax, rdi
 		idiv	rsi
+		
 		mov		rax, rdx
-		jmp		.done
+		
+		jmp		.done.signed
 
+	;; *****************************
+	;; *** Operaciones sin signo ***
+	;; *****************************
 
 	.unsigned.mult:
 		xor		rdx, rdx
@@ -339,7 +406,7 @@ section '.text' executable align 8
 		mul		rsi
 		xor		rdx, rdx
 		
-		jmp		.done
+		jmp		.done.unsigned
 
 	.unsigned.divs:
 		xor		rdx, rdx
@@ -348,7 +415,7 @@ section '.text' executable align 8
 		div		rsi
 		xor		rdx, rdx
 		
-		jmp		.done
+		jmp		.done.unsigned
 
 	.unsigned.module:
 		xor		rdx, rdx
@@ -357,7 +424,7 @@ section '.text' executable align 8
 		div		rsi
 		mov		rax, rdx
 		
-		jmp		.done
+		jmp		.done.unsigned
 
 ;; ************************
 ;; *** Buffers de datos ***
@@ -367,8 +434,8 @@ section '.text' executable align 8
 section '.bss' writeable
 
 	buffer:
-		.two:			rw $01
-		.sixty_four:	rb $40
+		.two:			rq $08
+		.sixty_four:	rq $08
 
 ;; *******************************
 ;; *** Varoles de solo lectura ***
@@ -393,18 +460,26 @@ section '.rodata'
 
 	msg: 
 
-		;; **********************
-		;; *** Salto de línea ***
-		;; **********************
+		;; ******************
+		;; *** Especiales ***
+		;; ******************
 
 		.void:	db $0D, $0A
+
+		.done:	db "terminando programa", $0D, $0A
+		.done.length = $ - .done
 
 		;; ***************
 		;; *** Errores ***
 		;; ***************
 
-		.error.option: db "No existe esa opción", $0D, $0A, $00
+		.error.option:	db "No existe esa opción", $0D, $0A, $00
 		.error.option.length = $ - .error.option
+
+		.error.calc:	db "Cálculo fallido", $0D, $0A
+						db "Es peligroso continuar la operación", $0D, $0A
+						db "Reiniciando programa", $0D, $0A
+		.error.calc.length = $ - .error.calc
 
 		;; **********************************************
 		;; *** Mensajes en lo que "carga" el programa ***
@@ -419,10 +494,10 @@ section '.rodata'
 		;; *****************************************
 
 		.number:
-		.number.one:	db "Ingrese el primer número: ", $00
+		.number.one:	db "Ingrese el primer número: "
 		.number.one.length = $ - .number.one
 
-		.number.two:	db $0D, $0A, "Ingrese el segundo número: ", $00
+		.number.two:	db "Ingrese el segundo número: "
 		.number.two.length = $ - .number.two
 
 		;; *********************************************
@@ -437,18 +512,18 @@ section '.rodata'
 		;; *****************************
 
 		.options:
-		.options.sum:				db "0) Suma", $0D, $0A
-		.options.minus:				db "1) Resta", $0D, $0A
+		.options.sum:				db "1) Suma", $0D, $0A
+		.options.minus:				db "2) Resta", $0D, $0A
 		
-		.options.signed.mult:		db "2) Multiplicación con signo", $0D, $0A
-		.options.signed.divs:		db "3) División con signo", $0D, $0A
-		.options.signed.module:		db "4) Modulo con signo", $0D, $0A
+		.options.signed.mult:		db "3) Multiplicación con signo", $0D, $0A
+		.options.signed.divs:		db "4) División con signo", $0D, $0A
+		.options.signed.module:		db "5) Modulo con signo", $0D, $0A
 		
-		.options.unsigned.mult:		db "5) Multiplicación sin signo", $0D, $0A
-		.options.unsigned.divs:		db "6) División sin signo", $0D, $0A
-		.options.unsigned.module:	db "7) Modulo sin signo", $0D, $0A
+		.options.unsigned.mult:		db "6) Multiplicación sin signo", $0D, $0A
+		.options.unsigned.divs:		db "7) División sin signo", $0D, $0A
+		.options.unsigned.module:	db "8) Modulo sin signo", $0D, $0A
 		
-		.options.end:				db "8) Salir del programa", $0D, $0A
+		.options.end:				db "9) Salir del programa", $0D, $0A, $0D, $0A
 
 		.options.length = $ - .options
 
@@ -456,13 +531,5 @@ section '.rodata'
 		;; *** Formatos de printf ***
 		;; **************************
 
-		.printf.format.signed.long:			db "%lld", $0D, $0A, $00
-		.printf.format.signed.integer:		db "%d", $0D, $0A, $00
-
-;; *********************
-;; *** Recordatorios ***
-;; *********************
-
-;; 1) Agregar un printf inmediato después de la operación
-;; 2) Mejorarlo para que lea archivos después
-;; 3) Corregit el error del input (urgente)
+		.printf.format.signed:		db $0D, $0A, "Resultado: %lld", $0D, $0A, $0D, $0A, $00
+		.printf.format.unsigned:	db $0D, $0A, "Resultado: %llu", $0D, $0A, $0D, $0A, $00
