@@ -32,9 +32,9 @@ public main
 ;; *** Importar cabeceras ***
 ;; **************************
 										;; ********************************
-include "include/linux/stdc/stdio.inc"	;; *** Definiciones externas	***
-include "include/linux/stdc/stdlib.inc"	;; *** de las funciones e		***
-include "include/linux/stdc/string.inc"	;; *** implementación de macros ***
+include "stdc/stdio.inc"	;; *** Definiciones externas	***
+include "stdc/stdlib.inc"	;; *** de las funciones e		***
+include "stdc/string.inc"	;; *** implementación de macros ***
 										;; ********************************
 ;; ******************************
 ;; *** Secciones del programa ***

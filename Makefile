@@ -4,30 +4,33 @@
 # *** Set Operating System ***
 # ****************************
 
-TARGET ?= Linux
+TARGET ?= linux
+
+# ***********************
+# *** Important Paths ***
+# ***********************
+
+SRC_PATH := src/$(TARGET)
+INC_PATH := include/$(TARGET)
+LIN_PATH := linker/$(TARGET)
+LIB_PATH := build/$(TARGET)/lib
+OBJ_PATH := build/$(TARGET)/obj
+BIN_PATH := build/$(TARGET)/bin
 
 # *****************
 # *** Compiling ***
 # *****************
 
-ifeq ($(TARGET),Windows_NT)
+ifeq ($(TARGET), windows)
 
 	include mak/windows_nt.mak
 
-else ifeq ($(TARGET),Linux)
+else ifeq ($(TARGET), linux)
 
 	include mak/linux.mak
 
-else ifeq ($(TARGET),Darwin)
+else ifeq ($(TARGET), darwin)
 
 	include mak/darwin.mak
 
 endif
-
-
-# *******************
-# *** Error Rules ***
-# *******************
-
-error:
-	echo "Don't support"

@@ -1,20 +1,16 @@
 # SPDX-License
 
 # *****************************************
-# *** @author: Eduardo Pozos Huerta		***
-# *** @file: linux.mak					***
-# *** @date: 25/03/2025					***
+# *** @author: Eduardo Pozos Huerta     ***
+# *** @file: linux.mak                  ***
+# *** @date: 25/03/2025                 ***
 # *****************************************
 
-# ***********************
-# *** Important paths ***
-# ***********************
+# ********************
+# *** Export paths ***
+# ********************
 
-SRC_PATH := src/linux
-LIN_PATH := linker/linux
-LIB_PATH := build/lib/linux
-BIN_PATH := build/bin/linux
-OBJ_PATH := build/objects/linux
+export INCLUDE := $(INC_PATH)
 
 # ***********************
 # *** Important Files ***
@@ -22,9 +18,6 @@ OBJ_PATH := build/objects/linux
 
 LINUX_BIN := $(BIN_PATH)/main
 LINUX_LIB := $(LIB_PATH)/libmath.so
-
-LINKER_BIN := $(LIN_PATH)/main/main.ld
-LINKER_LIB := $(LIN_PATH)/lib/math.ld
 
 OBJECT_MAIN := $(OBJ_PATH)/main/main.o
 
@@ -67,9 +60,7 @@ clean:
 # *** .PHONY Rules ***
 # ********************
 
-.PHONY: $(RM) \
-		$(AS) $(LD) \
-		$(ASFLAGS) $(LDFLAGS)
+.PHONY: all run clean 
 
 # **********************
 # *** Generate files ***
@@ -77,7 +68,7 @@ clean:
 
 $(LINUX_BIN): $(OBJECT_MAIN) $(LINUX_LIB)
 	@mkdir -p $(dir $@)
-	$(LD) $(LDFLAGS) --entry main -o $@ $< -lc
+	$(LD) $(LDFLAGS) --entry main -o $@ $< -lc -rpath=$(LIB_PATH)
 
 $(LINUX_LIB): $(OBJECT_LIB)
 	@mkdir -p $(dir $@)
